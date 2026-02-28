@@ -1,0 +1,5 @@
+{
+  "name": "Vision2Doc",
+  "description": "Extract text from images using AI and export to Word documents (.docx).",
+  "requestFramePermissions": []
+}
