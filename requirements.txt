@@ -1,0 +1,12 @@
+# Создайте файл с зависимостями
+cat > requirements.txt << 'EOF'
+fastapi
+uvicorn
+easyocr
+torch
+transformers
+sentencepiece
+protobuf
+pillow
+python-multipart
+EOF
