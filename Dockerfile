@@ -1,26 +1,26 @@
-FROM python:3.10-bullseye
-
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:20-slim AS base
 
 WORKDIR /app
 
-# Копируем только код и зависимости
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Копируем файлы зависимостей
+COPY package*.json ./
 
-COPY ./app ./app
-RUN mkdir -p /tmp/uploads
+# Устанавливаем зависимости
+RUN npm ci
 
-# 🔥 ВАЖНО: УДАЛИТЕ строки с предзагрузкой моделей!
-# Они только увеличивают размер образа
+# Копируем остальной код
+COPY . .
 
-ENV PORT=8080
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+# Собираем Next.js приложение
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+RUN npm run build
+
+# Открываем порт
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+# Запускаем приложение
+CMD ["npm", "start"]
