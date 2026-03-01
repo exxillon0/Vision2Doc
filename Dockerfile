@@ -37,7 +37,7 @@ RUN python -c "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
     AutoModelForSeq2SeqLM.from_pretrained(model_name)"
 
 # Указываем порт, который будет использовать Railway
-ENV PORT=8000
+ENV PORT=8080
 
 # Запускаем приложение
 CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
