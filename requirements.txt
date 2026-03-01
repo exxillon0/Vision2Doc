@@ -1,5 +1,3 @@
-# Создайте файл с зависимостями
-cat > requirements.txt << 'EOF'
 fastapi
 uvicorn
 easyocr
@@ -9,4 +7,4 @@ sentencepiece
 protobuf
 pillow
 python-multipart
-EOF
+
