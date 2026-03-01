@@ -1,47 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Кэш для модели
+let workingModel: string | null = null;
+
+async function findWorkingModel(apiKey: string): Promise<string> {
+  if (workingModel) return workingModel;
+
+  const candidates = [
+    'models/gemini-1.5-pro',
+    'gemini-1.5-pro',
+    'models/gemini-pro-vision',
+    'gemini-pro-vision',
+    'models/gemini-1.5-flash',
+    'gemini-1.5-flash',
+  ];
+
+  for (const model of candidates) {
+    try {
+      const testResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}?key=${apiKey}`
+      );
+      if (testResponse.ok) {
+        workingModel = model;
+        console.log(`✅ Using model: ${model}`);
+        return model;
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+
+  throw new Error('No working model found');
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // 👇 Читаем ТУ ЖЕ переменную, что в .env.local
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    
-    console.log('🔍 Checking NEXT_PUBLIC_GEMINI_API_KEY:', apiKey ? '✅ Present' : '❌ Missing');
-    
     if (!apiKey) {
-      console.error('❌ API key is missing in /api/gemini');
-      return NextResponse.json(
-        { error: 'Gemini API key is not configured on server' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'API key missing' }, { status: 500 });
     }
 
     const { image, prompt } = await request.json();
-    
     if (!image) {
-      return NextResponse.json(
-        { error: 'No image provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No image' }, { status: 400 });
     }
 
-    console.log('🔄 Sending request to Gemini API...');
-    
-    // Используем стабильную модель
+    const model = await findWorkingModel(apiKey);
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
             parts: [
-              { text: prompt || "Extract all text from this image. Return only the extracted text." },
-              { 
-                inline_data: { 
-                  mime_type: "image/jpeg", 
-                  data: image 
-                } 
-              }
+              { text: prompt || "Extract text from this image." },
+              { inline_data: { mime_type: "image/jpeg", data: image } }
             ]
           }]
         })
@@ -51,42 +66,23 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Gemini API error:', data);
       return NextResponse.json(
-        { error: `Gemini API error: ${data.error?.message || 'Unknown error'}` },
+        { error: `Gemini API error: ${data.error?.message}` },
         { status: response.status }
       );
     }
 
-    // Извлекаем текст из ответа
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    if (!text) {
-      return NextResponse.json(
-        { error: 'No text extracted from image' },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({ text });
-  } catch (error) {
-    console.error('❌ Server error:', error);
+
+  } catch (error: any) {
     return NextResponse.json(
-      { error: 'Failed to process image: ' + (error instanceof Error ? error.message : 'Unknown error') },
+      { error: error.message },
       { status: 500 }
     );
   }
 }
 
 export async function GET() {
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  
-  return NextResponse.json({
-    status: 'Gemini API endpoint',
-    hasKey: !!apiKey,
-    keyLength: apiKey?.length || 0,
-    nodeEnv: process.env.NODE_ENV,
-    message: apiKey ? '✅ Key is configured' : '❌ Key is missing',
-    tip: 'Make sure NEXT_PUBLIC_GEMINI_API_KEY is set in .env.local and Fly.io secrets'
-  });
+  return NextResponse.json({ status: 'ok' });
 }
