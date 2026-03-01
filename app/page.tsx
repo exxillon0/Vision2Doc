@@ -1,7 +1,6 @@
 'use client';
 
 import React, {useState} from 'react';
-import {GoogleGenAI} from '@google/genai';
 import {ImageUploader} from '@/components/ImageUploader';
 import {ResultDisplay} from '@/components/ResultDisplay';
 import {Scan, Sparkles, Loader2} from 'lucide-react';
@@ -21,15 +20,7 @@ export default function Vision2DocPage() {
     setExtractedText('');
 
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('Gemini API key is missing. Please configure it in the Secrets panel.');
-      }
-
-      const ai = new GoogleGenAI({apiKey});
-      const model = 'gemini-2.5-flash-image';
-
-      // Convert file to base64
+      // Конвертируем файл в base64
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve) => {
         reader.onload = () => {
@@ -41,32 +32,26 @@ export default function Vision2DocPage() {
 
       const base64Data = await base64Promise;
 
-      const response = await ai.models.generateContent({
-        model,
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: selectedFile.type,
-              },
-            },
-            {
-              text: "Extract and summarize the text from this image into a structured summary (conspectus). Follow these formatting rules:\n1. Use hierarchical headers for main sections (e.g., # for main title, ## for sections).\n2. Use bulleted (*) or numbered (1.) lists for key points and details.\n3. Highlight important keywords and terms by wrapping them in double asterisks (e.g., **keyword**).\n4. Ensure the output is logical, scannable, and well-organized.\nOnly return the formatted text, no conversational filler.",
-            },
-          ],
-        },
+      // ВЫЗЫВАЕМ СВОЙ API
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: base64Data,
+          prompt: "Extract and summarize the text from this image into a structured summary (conspectus). Follow these formatting rules:\n1. Use hierarchical headers for main sections (e.g., # for main title, ## for sections).\n2. Use bulleted (*) or numbered (1.) lists for key points and details.\n3. Highlight important keywords and terms by wrapping them in double asterisks (e.g., **keyword**).\n4. Ensure the output is logical, scannable, and well-organized.\nOnly return the formatted text, no conversational filler."
+        })
       });
 
-      const text = response.text;
-      if (text) {
-        setExtractedText(text);
-      } else {
-        throw new Error('No text could be extracted from this image.');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process image');
       }
+
+      setExtractedText(data.text);
     } catch (err: any) {
-      console.error('Processing error:', err);
-      setError(err.message || 'An error occurred while processing the image.');
+      console.error('❌ Error:', err);
+      setError(err.message || 'An error occurred');
     } finally {
       setIsProcessing(false);
     }
