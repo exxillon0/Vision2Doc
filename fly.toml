@@ -7,6 +7,8 @@ primary_region = "ams"
 [env]
   NODE_ENV = "production"
   NEXT_TELEMETRY_DISABLED = "1"
+  GEMINI_API_KEY = "AIzaSyB6W3nu_BS_uNKHPJuhQVgEKH8xtW0CBAI"
+  NEXT_PUBLIC_GEMINI_API_KEY = "AIzaSyB6W3nu_BS_uNKHPJuhQVgEKH8xtW0CBAI"
 
 [[services]]
   internal_port = 3000
